@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Auth and User Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Strict Exclusive Master Admin: info.raojatin@gmail.com ONLY
+    function isMasterAdmin() {
+      return request.auth != null &&
+             request.auth.token.email == 'info.raojatin@gmail.com';
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isActive() {
+      return isSignedIn() && (isMasterAdmin() || getUserData().isActive == true);
+    }
+    
+    function getRole() {
+      return isMasterAdmin() ? 'master_admin' : getUserData().role;
+    }
+    
+    function hasRole(role) {
+      return isActive() && (getRole() == role || (role == 'master_admin' && isMasterAdmin()));
+    }
+    
+    function isAnyRole(roles) {
+      return isActive() && (getRole() in roles || isMasterAdmin());
+    }
+
+    // 1. Users Collection
+    // Read by any active authenticated team member; Managed strictly & ONLY by info.raojatin@gmail.com
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterAdmin();
+    }
+
+    // 2. Leads Collection & Sub-activities
+    match /leads/{leadId} {
+      // Read: master_admin, owner, manager, ads_manager, or salesman if assigned to them
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'ads_manager']) 
+                  || (hasRole('salesman') && resource.data.assignedTo == request.auth.uid);
+
+      // Create: master_admin, manager, owner
+      allow create: if isAnyRole(['master_admin', 'super_admin', 'manager', 'owner']);
+
+      // Update: master_admin, manager, owner, or salesman updating their assigned lead without changing assignment
+      allow update: if isAnyRole(['master_admin', 'super_admin', 'manager', 'owner']) 
+                    || (hasRole('salesman') && resource.data.assignedTo == request.auth.uid && request.resource.data.assignedTo == resource.data.assignedTo);
+
+      // Delete: master_admin ONLY
+      allow delete: if isMasterAdmin();
+
+      // Lead Activities Sub-collection
+      match /activities/{activityId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isMasterAdmin();
+      }
+    }
+
+    // 3. Sales Ledger (Live collection: sales; fallback: sales_ledger)
+    match /sales/{saleId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'ads_manager']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'owner']);
+      allow delete: if isMasterAdmin();
+    }
+    match /sales_ledger/{saleId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'ads_manager']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'owner']);
+      allow delete: if isMasterAdmin();
+    }
+
+    // 4. Showroom Visitors (Live collection: visitors; fallback: showroom_visitors)
+    match /visitors/{visitorId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'salesman']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager']);
+      allow delete: if isMasterAdmin();
+    }
+    match /showroom_visitors/{visitorId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'salesman']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager']);
+      allow delete: if isMasterAdmin();
+    }
+
+    // 5. Ad Metrics (Live collection: ad_metrics; fallback: ad_logs)
+    match /ad_metrics/{metricId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'ads_manager']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'ads_manager']);
+      allow delete: if isMasterAdmin();
+    }
+    match /ad_logs/{metricId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'ads_manager']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'ads_manager']);
+      allow delete: if isMasterAdmin();
+    }
+
+    // 6. System Settings
+    match /system_settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterAdmin();
+    }
+
+    // 7. Scooter Catalogue
+    match /scooters/{scooterId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAnyRole(['master_admin', 'super_admin', 'owner']);
+    }
+
+    // 8. Customer Quotations & Booking Vouchers
+    match /vouchers/{voucherId} {
+      allow read: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'salesman']);
+      allow create, update: if isAnyRole(['master_admin', 'super_admin', 'owner', 'manager', 'salesman']);
+      allow delete: if isMasterAdmin() || hasRole('owner');
+    }
+  }
+}

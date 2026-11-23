@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after,
+  html,
+  body,
+  #root,
+  div,
+  section,
+  article,
+  aside,
+  header,
+  footer,
+  nav,
+  main,
+  h1, h2, h3, h4, h5, h6,
+  p, span, a, label, li, ul, ol,
+  table, thead, tbody, tr, th, td,
+  input, textarea, select, option, button,
+  svg, text, tspan {
+    font-family: 'Lato', sans-serif !important;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    font-variant-numeric: tabular-nums;
+  }
+
+  body {
+    @apply bg-[#F8FAFC] text-[#111827] antialiased min-h-screen overflow-x-hidden;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Universal tabular nums for all numeric & code elements while staying strictly in Lato */
+  .tabular-nums,
+  table,
+  [data-num],
+  time,
+  input[type="number"],
+  input[type="tel"],
+  input[type="date"] {
+    font-family: 'Lato', sans-serif !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+}
+
+/* Touch optimization */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Bottom sheet animation */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Print Optimization for Vouchers and Invoices */
+@media print {
+  * {
+    font-family: 'Lato', sans-serif !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  aside, header, nav, .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  #printable-voucher-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+}
